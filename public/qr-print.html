@@ -90,7 +90,13 @@
       try {
         const netRes = await fetch('/api/network-info');
         const netInfo = await netRes.json();
-        currentBaseUrl = netInfo.wifiUrl || window.location.origin;
+        if (window.location.protocol === 'https:' || !window.location.hostname.includes('localhost')) {
+          currentBaseUrl = window.location.origin;
+        } else if (netInfo.baseUrl && netInfo.baseUrl.startsWith('https://')) {
+          currentBaseUrl = netInfo.baseUrl;
+        } else {
+          currentBaseUrl = window.location.origin;
+        }
       } catch (e) {
         console.warn(e);
       }

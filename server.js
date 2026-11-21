@@ -63,13 +63,15 @@ app.use(express.static(path.join(__dirname))); // Root fallback
 // Network & Host info
 app.get('/api/network-info', (req, res) => {
   const host = req.headers.host || `${localIp}:${PORT}`;
-  const protocol = req.protocol || 'http';
+  const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
+  const publicUrl = `${protocol}://${host}`;
   res.json({
     localIp,
     port: PORT,
     detectedHost: host,
-    baseUrl: `${protocol}://${host}`,
-    wifiUrl: `http://${localIp}:${PORT}`
+    baseUrl: publicUrl,
+    wifiUrl: `http://${localIp}:${PORT}`,
+    publicUrl: publicUrl
   });
 });
 

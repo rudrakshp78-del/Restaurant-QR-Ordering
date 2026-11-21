@@ -2,6 +2,10 @@
 node_modules/
 package-lock.json
 
+# Binaries
+cloudflared.exe
+*.exe
+
 # Environment variables
 .env
 .env.local

@@ -127,16 +127,26 @@ document.addEventListener('DOMContentLoaded', () => {
     cartTableBadge.textContent = `Ordering for Takeaway / Parcel`;
   });
 
+  // Instant render from embedded data if available (zero blank flicker)
+  if (window.GAJANAN_MENU && (!menu || menu.length === 0)) {
+    menu = window.GAJANAN_MENU;
+  }
+
   // Fetch Menu from server with local fallback
   async function fetchMenu() {
     try {
       const res = await fetch('/api/menu');
       if (res.ok) {
-        menu = await res.json();
+        const liveMenu = await res.json();
+        if (Array.isArray(liveMenu) && liveMenu.length > 0) {
+          menu = liveMenu;
+        }
+      } else if (window.GAJANAN_MENU && (!menu || menu.length === 0)) {
+        menu = window.GAJANAN_MENU;
       }
     } catch (e) {
       console.warn("Using embedded fallback menu", e);
-      if (window.GAJANAN_MENU) menu = window.GAJANAN_MENU;
+      if (window.GAJANAN_MENU && (!menu || menu.length === 0)) menu = window.GAJANAN_MENU;
     }
     renderDishes();
   }

@@ -146,40 +146,46 @@
         </button>
       </div>
 
-      <!-- Categories Scrollable Bar (10 Categories) -->
-      <div class="flex items-center space-x-2 overflow-x-auto hide-scrollbar pb-1 text-xs">
+      <!-- Categories Scrollable Bar (12 Gajanan Hotel Categories) -->
+      <div id="categoryTabsContainer" class="flex items-center space-x-2 overflow-x-auto hide-scrollbar pb-1 text-xs">
         <button data-cat="all" class="cat-pill active px-4 py-2 rounded-xl font-bold transition whitespace-nowrap bg-charcoal-900 text-gold-400 shadow-sm border border-gold-500/30">
           All Dishes
         </button>
-        <button data-cat="paneer" class="cat-pill px-4 py-2 rounded-xl font-medium transition whitespace-nowrap bg-white text-stone-700 hover:bg-cream-200/60 border border-cream-200">
-          🧀 Paneer Specials
+        <button data-cat="vegetables" class="cat-pill px-4 py-2 rounded-xl font-medium transition whitespace-nowrap bg-white text-stone-700 hover:bg-cream-200/60 border border-cream-200">
+          🍲 Vegetables & Curries
+        </button>
+        <button data-cat="tandoor" class="cat-pill px-4 py-2 rounded-xl font-medium transition whitespace-nowrap bg-white text-stone-700 hover:bg-cream-200/60 border border-cream-200">
+          🍢 Tandoor & Tikka
+        </button>
+        <button data-cat="sizzler" class="cat-pill px-4 py-2 rounded-xl font-medium transition whitespace-nowrap bg-white text-stone-700 hover:bg-cream-200/60 border border-cream-200">
+          ♨️ Sizzlers & Platters
+        </button>
+        <button data-cat="chinese" class="cat-pill px-4 py-2 rounded-xl font-medium transition whitespace-nowrap bg-white text-stone-700 hover:bg-cream-200/60 border border-cream-200">
+          🥢 Chinese & Noodles
+        </button>
+        <button data-cat="pizza" class="cat-pill px-4 py-2 rounded-xl font-medium transition whitespace-nowrap bg-white text-stone-700 hover:bg-cream-200/60 border border-cream-200">
+          🍕 Pizza
         </button>
         <button data-cat="bread" class="cat-pill px-4 py-2 rounded-xl font-medium transition whitespace-nowrap bg-white text-stone-700 hover:bg-cream-200/60 border border-cream-200">
-          🫓 Indian Bread
-        </button>
-        <button data-cat="main" class="cat-pill px-4 py-2 rounded-xl font-medium transition whitespace-nowrap bg-white text-stone-700 hover:bg-cream-200/60 border border-cream-200">
-          🍲 Main Course
-        </button>
-        <button data-cat="dal" class="cat-pill px-4 py-2 rounded-xl font-medium transition whitespace-nowrap bg-white text-stone-700 hover:bg-cream-200/60 border border-cream-200">
-          🥣 Dal
+          🫓 Indian Bread & Roti
         </button>
         <button data-cat="rice" class="cat-pill px-4 py-2 rounded-xl font-medium transition whitespace-nowrap bg-white text-stone-700 hover:bg-cream-200/60 border border-cream-200">
           🍚 Rice & Biryani
         </button>
-        <button data-cat="chinese" class="cat-pill px-4 py-2 rounded-xl font-medium transition whitespace-nowrap bg-white text-stone-700 hover:bg-cream-200/60 border border-cream-200">
-          🥢 Chinese
+        <button data-cat="snacks" class="cat-pill px-4 py-2 rounded-xl font-medium transition whitespace-nowrap bg-white text-stone-700 hover:bg-cream-200/60 border border-cream-200">
+          🥟 Pakora & Snacks
         </button>
-        <button data-cat="starters" class="cat-pill px-4 py-2 rounded-xl font-medium transition whitespace-nowrap bg-white text-stone-700 hover:bg-cream-200/60 border border-cream-200">
-          🍢 Starters
+        <button data-cat="soups" class="cat-pill px-4 py-2 rounded-xl font-medium transition whitespace-nowrap bg-white text-stone-700 hover:bg-cream-200/60 border border-cream-200">
+          🥣 Soups
         </button>
-        <button data-cat="beverages" class="cat-pill px-4 py-2 rounded-xl font-medium transition whitespace-nowrap bg-white text-stone-700 hover:bg-cream-200/60 border border-cream-200">
-          🥤 Beverages
+        <button data-cat="baked" class="cat-pill px-4 py-2 rounded-xl font-medium transition whitespace-nowrap bg-white text-stone-700 hover:bg-cream-200/60 border border-cream-200">
+          🍝 Baked Dishes & Pasta
         </button>
-        <button data-cat="desserts" class="cat-pill px-4 py-2 rounded-xl font-medium transition whitespace-nowrap bg-white text-stone-700 hover:bg-cream-200/60 border border-cream-200">
-          🍨 Desserts
+        <button data-cat="raita" class="cat-pill px-4 py-2 rounded-xl font-medium transition whitespace-nowrap bg-white text-stone-700 hover:bg-cream-200/60 border border-cream-200">
+          🥛 Curd, Raita & Lassi
         </button>
-        <button data-cat="thali" class="cat-pill px-4 py-2 rounded-xl font-medium transition whitespace-nowrap bg-white text-stone-700 hover:bg-cream-200/60 border border-cream-200">
-          👑 Special Thali
+        <button data-cat="salad" class="cat-pill px-4 py-2 rounded-xl font-medium transition whitespace-nowrap bg-white text-stone-700 hover:bg-cream-200/60 border border-cream-200">
+          🥗 Salad & Papad
         </button>
       </div>
 
@@ -339,8 +345,9 @@
     </div>
   </div>
 
-  <!-- Audio and Customer Scripts -->
+  <!-- Audio, Gajanan Fallback Data and Customer Scripts -->
   <script src="./js/audio.js"></script>
+  <script src="./js/gajanan-data.js"></script>
   <script src="./js/customer.js"></script>
 </body>
 </html>
