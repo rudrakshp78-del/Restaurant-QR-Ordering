@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Table QR Codes & Standees | Print Ready</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="bg-slate-100 text-slate-800 antialiased min-h-screen">
+
+  <!-- Control Header (Hidden when printing) -->
+  <header class="no-print bg-white border-b border-slate-200 px-6 py-4 sticky top-0 z-30 shadow-sm">
+    <div class="max-w-6xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
+      
+      <div>
+        <div class="flex items-center space-x-2">
+          <div class="w-8 h-8 rounded-lg bg-orange-600 text-white flex items-center justify-center font-bold">
+            <i data-lucide="qr-code" class="w-5 h-5"></i>
+          </div>
+          <h1 class="text-lg font-black text-slate-900">Table QR Standees & Barcode Cards</h1>
+        </div>
+        <p class="text-xs text-slate-500 mt-0.5">Print and place on restaurant tables. Guests scan via Google Lens or Camera to order.</p>
+      </div>
+
+      <!-- Settings & Print CTA -->
+      <div class="flex flex-wrap items-center gap-3">
+        <!-- Target IP / Base URL Selector -->
+        <div class="flex items-center space-x-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs">
+          <label class="font-bold text-slate-600">Scan URL Host:</label>
+          <input 
+            type="text" 
+            id="baseUrlInput" 
+            class="px-2 py-1 rounded bg-white border border-slate-200 text-xs font-mono text-slate-700 w-52 focus:outline-none focus:ring-1 focus:ring-orange-500"
+            placeholder="http://10.190.32.46:3000"
+          >
+          <button id="applyUrlBtn" class="px-2.5 py-1 rounded bg-slate-800 text-white hover:bg-slate-700 font-bold text-[11px]">
+            Apply
+          </button>
+        </div>
+
+        <button onclick="window.print()" class="px-5 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs shadow-md shadow-orange-500/30 flex items-center space-x-2 active:scale-95 transition">
+          <i data-lucide="printer" class="w-4 h-4"></i>
+          <span>Print All Standees</span>
+        </button>
+
+        <a href="/" target="_blank" class="px-3.5 py-2.5 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700 font-bold text-xs flex items-center space-x-1.5 transition">
+          <i data-lucide="external-link" class="w-4 h-4"></i>
+          <span>Customer Menu</span>
+        </a>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- Notice Banner for Wi-Fi (No-print) -->
+  <div class="no-print max-w-6xl mx-auto px-6 mt-4">
+    <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-xs text-amber-900 flex items-start space-x-3">
+      <i data-lucide="info" class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5"></i>
+      <div>
+        <strong class="font-bold">How Google Lens / Phone Camera QR Scanning Works:</strong>
+        <p class="mt-1">
+          Each card below has a unique QR code generated for that specific table. When a guest points their smartphone camera or Google Lens at the barcode, their phone browser immediately opens the restaurant menu with that table pre-selected (e.g. <span id="sampleQrUrl" class="font-mono bg-white px-1.5 py-0.5 rounded border border-amber-300 text-amber-800">http://10.190.32.46:3000/?table=1</span>).
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Printable Table Cards Grid -->
+  <main class="max-w-6xl mx-auto p-6">
+    <div id="qrCardsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <!-- Injected via JavaScript -->
+    </div>
+  </main>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      const qrCardsGrid = document.getElementById('qrCardsGrid');
+      const baseUrlInput = document.getElementById('baseUrlInput');
+      const applyUrlBtn = document.getElementById('applyUrlBtn');
+      const sampleQrUrl = document.getElementById('sampleQrUrl');
+
+      // Fetch network info to get primary Wi-Fi IP
+      let currentBaseUrl = window.location.origin;
+      try {
+        const netRes = await fetch('/api/network-info');
+        const netInfo = await netRes.json();
+        // If loaded on localhost, prefer the wifiUrl so scanned phones can reach it!
+        currentBaseUrl = netInfo.wifiUrl || window.location.origin;
+      } catch (e) {
+        console.warn(e);
+      }
+
+      baseUrlInput.value = currentBaseUrl;
+      sampleQrUrl.textContent = `${currentBaseUrl}/?table=1`;
+
+      async function loadQRCodes() {
+        qrCardsGrid.innerHTML = `
+          <div class="col-span-full text-center py-12 text-slate-500">
+            <div class="animate-spin w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full mx-auto mb-2"></div>
+            <p class="font-semibold text-sm">Generating Table QR Codes...</p>
+          </div>
+        `;
+
+        try {
+          const res = await fetch(`/api/tables-qr-all?baseUrl=${encodeURIComponent(currentBaseUrl)}`);
+          const tableQrs = await res.json();
+
+          qrCardsGrid.innerHTML = tableQrs.map(t => `
+            <div class="qr-card-print bg-white rounded-3xl p-6 border-2 border-slate-200 shadow-sm flex flex-col items-center text-center relative overflow-hidden">
+              
+              <!-- Top Restaurant Brand -->
+              <div class="w-full pb-3 border-b border-slate-100 flex items-center justify-between">
+                <div class="flex items-center space-x-1.5">
+                  <span class="text-orange-600 font-black text-sm tracking-wider">ROYAL SPICE</span>
+                </div>
+                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Dine-In</span>
+              </div>
+
+              <!-- Big Table Number -->
+              <div class="my-3">
+                <span class="text-[11px] font-extrabold uppercase tracking-widest text-slate-400 block">Scan to Order at</span>
+                <span class="text-4xl font-black text-slate-900 font-mono tracking-tight">TABLE ${t.tableNumber < 10 ? '0' + t.tableNumber : t.tableNumber}</span>
+              </div>
+
+              <!-- High Res QR Code Image -->
+              <div class="p-3 bg-white rounded-2xl border-2 border-slate-900 shadow-md my-2">
+                <img src="${t.qrDataUrl}" alt="Table ${t.tableNumber} QR Code" class="w-48 h-48 object-contain">
+              </div>
+
+              <!-- Scanning instructions -->
+              <div class="mt-2 space-y-1">
+                <div class="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-orange-50 text-orange-700 font-bold text-xs">
+                  <span>📷 Scan with Google Lens or Camera</span>
+                </div>
+                <p class="text-[11px] text-slate-500 max-w-xs mt-1 leading-tight">
+                  Point your phone camera to view menu, order <strong>Paneer & Chapatis</strong> directly to the kitchen with 30s cancellation window!
+                </p>
+              </div>
+
+              <!-- Direct URL Footer & Test Link -->
+              <div class="w-full mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-400">
+                <span class="truncate max-w-[170px] font-mono text-left">${t.targetUrl}</span>
+                <a href="${t.targetUrl}" target="_blank" class="no-print text-orange-600 font-bold hover:underline">Open Link ↗</a>
+              </div>
+
+            </div>
+          `).join('');
+
+          if (window.lucide) window.lucide.createIcons();
+
+        } catch (err) {
+          console.error(err);
+          qrCardsGrid.innerHTML = `<div class="col-span-full text-red-500 text-center py-10 font-bold">Failed to load QR codes.</div>`;
+        }
+      }
+
+      applyUrlBtn.addEventListener('click', () => {
+        currentBaseUrl = baseUrlInput.value.trim().replace(/\/$/, '');
+        sampleQrUrl.textContent = `${currentBaseUrl}/?table=1`;
+        loadQRCodes();
+      });
+
+      loadQRCodes();
+    });
+  </script>
+
+</body>
+</html>
