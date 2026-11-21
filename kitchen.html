@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SmartDine | Chef Kitchen Display System (KDS) - Gajanan Hotel</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Socket.io -->
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <!-- Custom Luxury CSS -->
+  <link rel="stylesheet" href="./css/luxury.css">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            gold: {
+              400: '#e5c158',
+              500: '#c89b3c',
+              600: '#aa8022',
+            },
+            charcoal: {
+              950: '#0d0b0a',
+              900: '#141210',
+              800: '#1f1b18',
+              700: '#2d2824'
+            },
+            cream: {
+              50: '#fdfbf7',
+              100: '#faf7f2',
+            }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-charcoal-950 text-cream-100 antialiased min-h-screen flex flex-col font-sans select-none">
+
+  <!-- Kitchen Top Bar -->
+  <header class="bg-charcoal-900 border-b border-gold-500/20 px-6 py-3.5 flex items-center justify-between sticky top-0 z-30 shadow-xl">
+    <div class="flex items-center space-x-4">
+      <div class="w-11 h-11 rounded-2xl gold-gradient-bg flex items-center justify-center text-charcoal-900 font-bold shadow-lg shadow-gold-500/20">
+        <i data-lucide="chef-hat" class="w-6 h-6"></i>
+      </div>
+      <div>
+        <div class="flex items-center space-x-2">
+          <h1 class="font-display-luxury text-lg font-black text-cream-50 tracking-wider">CHEF KITCHEN DISPLAY (KDS)</h1>
+          <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-orange-500/20 text-orange-400 border border-orange-500/30">
+            <span class="w-1.5 h-1.5 rounded-full bg-orange-400 animate-ping mr-1"></span> COOKING PASS
+          </span>
+        </div>
+        <p class="text-xs text-stone-400">Gajanan Hotel Kitchen Station • Touchscreen Optimized</p>
+      </div>
+    </div>
+
+    <!-- Active Count & Clock -->
+    <div class="flex items-center space-x-3 text-xs">
+      <div class="bg-charcoal-800 px-3.5 py-1.5 rounded-xl border border-charcoal-700 flex items-center space-x-2">
+        <span class="text-stone-400">Tickets in Prep:</span>
+        <span id="statKitchenActive" class="font-black text-amber-400 text-sm">0</span>
+      </div>
+      <div class="bg-charcoal-800 px-3.5 py-1.5 rounded-xl border border-charcoal-700 flex items-center space-x-2">
+        <span class="text-stone-400">Kitchen Clock:</span>
+        <span id="kitchenClock" class="font-mono font-bold text-gold-400 text-sm">--:--:--</span>
+      </div>
+    </div>
+
+    <!-- Kitchen Sound & Controls -->
+    <div class="flex items-center space-x-2">
+      <button id="toggleAudioBtn" class="px-3 py-2 rounded-xl bg-charcoal-800 hover:bg-charcoal-700 text-cream-100 border border-charcoal-700 text-xs font-semibold flex items-center space-x-1.5 transition">
+        <i data-lucide="volume-2" id="audioIcon" class="w-4 h-4 text-emerald-400"></i>
+        <span id="audioText">Sound ON</span>
+      </button>
+
+      <button id="fullscreenBtn" class="p-2 rounded-xl bg-charcoal-800 hover:bg-charcoal-700 text-stone-200 border border-charcoal-700 text-xs transition">
+        <i data-lucide="maximize" class="w-4 h-4"></i>
+      </button>
+
+      <a href="/counter" target="_blank" class="px-3 py-2 rounded-xl bg-charcoal-800 hover:bg-charcoal-700 text-gold-400 border border-gold-500/30 text-xs font-bold flex items-center space-x-1.5 shadow transition">
+        <i data-lucide="bell-ring" class="w-4 h-4"></i>
+        <span>Counter Desk</span>
+      </a>
+    </div>
+  </header>
+
+  <!-- KDS Section Columns Filter Tabs -->
+  <div class="bg-charcoal-900/60 px-6 py-2.5 border-b border-charcoal-800 flex items-center justify-between">
+    <div class="flex items-center space-x-2 text-xs">
+      <button data-kds-filter="all" class="kds-filter-btn active px-4 py-1.5 rounded-lg font-bold bg-gold-500 text-charcoal-900">
+        All Kitchen Tickets (<span id="countKdsAll">0</span>)
+      </button>
+      <button data-kds-filter="new" class="kds-filter-btn px-4 py-1.5 rounded-lg font-medium bg-charcoal-800 text-stone-300 hover:bg-charcoal-700">
+        📥 New Orders (<span id="countKdsNew">0</span>)
+      </button>
+      <button data-kds-filter="preparing" class="kds-filter-btn px-4 py-1.5 rounded-lg font-medium bg-charcoal-800 text-stone-300 hover:bg-charcoal-700">
+        🔥 Preparing Now (<span id="countKdsPrep">0</span>)
+      </button>
+      <button data-kds-filter="ready" class="kds-filter-btn px-4 py-1.5 rounded-lg font-medium bg-charcoal-800 text-stone-300 hover:bg-charcoal-700">
+        ✅ Ready Orders (<span id="countKdsReady">0</span>)
+      </button>
+    </div>
+
+    <div class="text-[11px] text-stone-400">
+      Tap items to check off as prepared • Auto-syncs to counter & customer
+    </div>
+  </div>
+
+  <!-- Kitchen Tickets Grid -->
+  <main class="flex-1 p-6 overflow-y-auto">
+    
+    <div id="kitchenEmptyState" class="hidden text-center py-24">
+      <i data-lucide="chef-hat" class="w-16 h-16 mx-auto text-stone-700 stroke-1 mb-3"></i>
+      <h3 class="font-serif-luxury text-xl font-bold text-stone-400">Kitchen Display Clear</h3>
+      <p class="text-xs text-stone-500 mt-1 max-w-sm mx-auto">
+        When the counter forwards orders to the kitchen, cooking tickets will appear here with loud audio chime.
+      </p>
+    </div>
+
+    <div id="kitchenGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+      <!-- Injected via JavaScript -->
+    </div>
+
+  </main>
+
+  <!-- Audio Script -->
+  <script src="./js/audio.js"></script>
+  <!-- Kitchen KDS Script -->
+  <script src="./js/kitchen.js"></script>
+</body>
+</html>

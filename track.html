@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>SmartDine | Live Order Tracking - Gajanan Hotel</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Socket.io -->
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <!-- Custom Luxury CSS -->
+  <link rel="stylesheet" href="./css/luxury.css">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            gold: {
+              400: '#e5c158',
+              500: '#c89b3c',
+              600: '#aa8022',
+            },
+            charcoal: {
+              900: '#141210',
+              800: '#1f1b18'
+            },
+            cream: {
+              50: '#fdfbf7',
+              100: '#faf7f2',
+              200: '#f0e8dc'
+            }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-cream-100 text-charcoal-900 antialiased min-h-screen pb-16">
+
+  <!-- Header -->
+  <header class="bg-charcoal-900 text-cream-50 px-4 py-3 border-b border-gold-500/20 sticky top-0 z-30">
+    <div class="max-w-xl mx-auto flex items-center justify-between">
+      <div class="flex items-center space-x-2.5">
+        <div class="w-8 h-8 rounded-lg gold-gradient-bg text-charcoal-900 flex items-center justify-center font-bold">
+          <i data-lucide="utensils" class="w-4 h-4"></i>
+        </div>
+        <div>
+          <h1 class="font-display-luxury text-sm font-bold text-cream-50">SmartDine Live Tracker</h1>
+          <p id="trackTableCode" class="text-[11px] text-gold-400 font-semibold">Table 01 • Gajanan Hotel</p>
+        </div>
+      </div>
+
+      <a id="backToMenuLink" href="/menu" class="px-3 py-1.5 rounded-lg border border-gold-500/30 text-gold-300 text-xs font-bold hover:bg-white/10 transition">
+        ← Back to Menu
+      </a>
+    </div>
+  </header>
+
+  <!-- Main Tracking Container -->
+  <main class="max-w-xl mx-auto px-4 mt-5 space-y-4">
+    
+    <!-- Hero Order Status Card -->
+    <div class="bg-white rounded-3xl p-6 border border-cream-200 shadow-sm text-center relative overflow-hidden">
+      
+      <div class="flex items-center justify-between pb-3 border-b border-cream-100 text-xs">
+        <span class="font-mono font-bold text-stone-500" id="displayOrderId">#ORD-1001</span>
+        <span id="displayOrderStatusBadge" class="px-3 py-1 rounded-full font-bold uppercase text-[10px] bg-amber-100 text-amber-800 border border-amber-300">
+          Order Placed
+        </span>
+      </div>
+
+      <!-- Icon & Status Headline -->
+      <div class="my-5">
+        <div id="statusPulseRing" class="w-20 h-20 rounded-full gold-gradient-bg text-charcoal-900 flex items-center justify-center mx-auto mb-3 shadow-lg shadow-gold-500/20 active-step-pulse">
+          <i data-lucide="chef-hat" id="statusMainIcon" class="w-10 h-10"></i>
+        </div>
+        <h2 id="statusHeadline" class="font-serif-luxury text-2xl font-extrabold text-charcoal-900">
+          Order Placed with Counter
+        </h2>
+        <p id="statusSubtitle" class="text-xs text-stone-500 mt-1 max-w-sm mx-auto leading-relaxed">
+          Your order has been sent to the reception counter and will be forwarded to the chef shortly.
+        </p>
+      </div>
+
+      <!-- Estimated Time Box -->
+      <div class="p-3 bg-cream-50 rounded-2xl border border-cream-200 flex items-center justify-around text-xs">
+        <div>
+          <span class="text-stone-400 block text-[10px] uppercase font-bold">Estimated Time</span>
+          <span id="estimatedPrepTime" class="font-serif-luxury font-black text-charcoal-900 text-sm">~18 Mins</span>
+        </div>
+        <div class="w-px h-8 bg-cream-200"></div>
+        <div>
+          <span class="text-stone-400 block text-[10px] uppercase font-bold">Order Total</span>
+          <span id="orderGrandTotal" class="font-serif-luxury font-black text-gold-600 text-sm">₹0</span>
+        </div>
+      </div>
+
+      <!-- 30-Second Cancel Section (Only shown during 'placed' state) -->
+      <div id="cancelWindowSection" class="mt-4 pt-3 border-t border-cream-100">
+        <div class="text-[11px] text-stone-500 mb-2">
+          ⏳ You can cancel or change within: <strong class="text-red-600 font-mono text-sm" id="cancelTimerText">30s</strong>
+        </div>
+        <button id="cancelOrderBtn" class="w-full py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-md transition active:scale-95 flex items-center justify-center space-x-1.5">
+          <i data-lucide="x-circle" class="w-4 h-4"></i>
+          <span>Cancel Order (<span id="cancelBtnSeconds">30s</span>)</span>
+        </button>
+      </div>
+
+    </div>
+
+    <!-- 7-STEP VISUAL PROGRESS STEPPER -->
+    <div class="bg-white rounded-3xl p-6 border border-cream-200 shadow-sm">
+      <h3 class="font-serif-luxury font-bold text-sm text-charcoal-900 mb-4 pb-2 border-b border-cream-100 flex items-center justify-between">
+        <span>Live Kitchen Progress (Server-Confirmed)</span>
+        <span class="text-[10px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">Real-Time Sync</span>
+      </h3>
+
+      <div class="relative pl-6 space-y-6 before:content-[''] before:absolute before:left-2.5 before:top-3 before:bottom-3 before:w-0.5 before:bg-cream-200" id="stepperContainer">
+        
+        <!-- Step 1: Placed -->
+        <div class="relative step-item" data-step="placed">
+          <div class="step-dot absolute -left-6 top-0.5 w-5 h-5 rounded-full bg-gold-500 text-charcoal-900 flex items-center justify-center text-[10px] font-bold shadow">
+            ✓
+          </div>
+          <div>
+            <h4 class="text-xs font-bold text-charcoal-900">1. Order Placed</h4>
+            <p class="text-[11px] text-stone-500">Order sent from table to restaurant system</p>
+            <span class="text-[10px] font-mono text-stone-400 block mt-0.5" id="time-placed">--:--:--</span>
+          </div>
+        </div>
+
+        <!-- Step 2: Confirmed by Counter -->
+        <div class="relative step-item opacity-40" data-step="confirmed">
+          <div class="step-dot absolute -left-6 top-0.5 w-5 h-5 rounded-full bg-cream-200 text-stone-600 flex items-center justify-center text-[10px] font-bold">
+            2
+          </div>
+          <div>
+            <h4 class="text-xs font-bold text-charcoal-900">2. Order Confirmed by Counter</h4>
+            <p class="text-[11px] text-stone-500">Main desk accepted and verified your order</p>
+            <span class="text-[10px] font-mono text-stone-400 block mt-0.5" id="time-confirmed">Pending</span>
+          </div>
+        </div>
+
+        <!-- Step 3: Sent to Kitchen -->
+        <div class="relative step-item opacity-40" data-step="in_kitchen">
+          <div class="step-dot absolute -left-6 top-0.5 w-5 h-5 rounded-full bg-cream-200 text-stone-600 flex items-center justify-center text-[10px] font-bold">
+            3
+          </div>
+          <div>
+            <h4 class="text-xs font-bold text-charcoal-900">3. Sent to Kitchen</h4>
+            <p class="text-[11px] text-stone-500">Order ticket routed to cooking display</p>
+            <span class="text-[10px] font-mono text-stone-400 block mt-0.5" id="time-in_kitchen">Pending</span>
+          </div>
+        </div>
+
+        <!-- Step 4: Chef Preparing -->
+        <div class="relative step-item opacity-40" data-step="preparing">
+          <div class="step-dot absolute -left-6 top-0.5 w-5 h-5 rounded-full bg-cream-200 text-stone-600 flex items-center justify-center text-[10px] font-bold">
+            4
+          </div>
+          <div>
+            <h4 class="text-xs font-bold text-charcoal-900">4. Chef Preparing Your Food</h4>
+            <p class="text-[11px] text-stone-500">Dishes actively on tawa, tandoor & flame</p>
+            <span class="text-[10px] font-mono text-stone-400 block mt-0.5" id="time-preparing">Pending</span>
+          </div>
+        </div>
+
+        <!-- Step 5: Food Ready -->
+        <div class="relative step-item opacity-40" data-step="food_ready">
+          <div class="step-dot absolute -left-6 top-0.5 w-5 h-5 rounded-full bg-cream-200 text-stone-600 flex items-center justify-center text-[10px] font-bold">
+            5
+          </div>
+          <div>
+            <h4 class="text-xs font-bold text-charcoal-900">5. Food Ready</h4>
+            <p class="text-[11px] text-stone-500">Plated hot on kitchen pass ready for pickup</p>
+            <span class="text-[10px] font-mono text-stone-400 block mt-0.5" id="time-food_ready">Pending</span>
+          </div>
+        </div>
+
+        <!-- Step 6: Out for Delivery -->
+        <div class="relative step-item opacity-40" data-step="out_for_delivery">
+          <div class="step-dot absolute -left-6 top-0.5 w-5 h-5 rounded-full bg-cream-200 text-stone-600 flex items-center justify-center text-[10px] font-bold">
+            6
+          </div>
+          <div>
+            <h4 class="text-xs font-bold text-charcoal-900">6. Out for Delivery to Your Table</h4>
+            <p class="text-[11px] text-stone-500">Waitstaff bringing your food to table</p>
+            <span class="text-[10px] font-mono text-stone-400 block mt-0.5" id="time-out_for_delivery">Pending</span>
+          </div>
+        </div>
+
+        <!-- Step 7: Order Served -->
+        <div class="relative step-item opacity-40" data-step="served">
+          <div class="step-dot absolute -left-6 top-0.5 w-5 h-5 rounded-full bg-cream-200 text-stone-600 flex items-center justify-center text-[10px] font-bold">
+            7
+          </div>
+          <div>
+            <h4 class="text-xs font-bold text-charcoal-900">7. Order Served</h4>
+            <p class="text-[11px] text-stone-500">Delivered. Enjoy your royal meal at Gajanan Hotel!</p>
+            <span class="text-[10px] font-mono text-stone-400 block mt-0.5" id="time-served">Pending</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Items Summary Card -->
+    <div class="bg-white rounded-3xl p-5 border border-cream-200 shadow-sm">
+      <h4 class="font-serif-luxury font-bold text-xs text-charcoal-900 mb-2">Order Items:</h4>
+      <div id="trackingItemsList" class="space-y-2 text-xs">
+        <!-- Injected -->
+      </div>
+      <div id="trackingNotesContainer" class="hidden mt-3 p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-800">
+        <strong>Notes for Chef:</strong> <span id="trackingNotesText"></span>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Audio Script -->
+  <script src="./js/audio.js"></script>
+
+  <!-- Tracker Logic Script -->
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const orderId = urlParams.get('orderId');
+      const table = urlParams.get('table') || 'T01';
+
+      if (!orderId) {
+        alert("No order ID specified.");
+        window.location.href = '/menu';
+        return;
+      }
+
+      document.getElementById('backToMenuLink').href = `/menu?table=${table}`;
+      document.getElementById('trackTableCode').textContent = `${table} • Gajanan Hotel`;
+      document.getElementById('displayOrderId').textContent = `#${orderId}`;
+
+      let currentOrder = null;
+      let countdownTimer = null;
+
+      // Socket.IO
+      const socket = io();
+      socket.on('connect', () => {
+        socket.emit('table:join', table);
+      });
+
+      socket.on('order:status_update', (order) => {
+        if (order.id === orderId) {
+          currentOrder = order;
+          renderOrderTracking(order);
+          if (window.restaurantAudio) window.restaurantAudio.playOrderBell();
+        }
+      });
+
+      // Fetch Order Data
+      async function loadOrder() {
+        try {
+          const res = await fetch(`/api/orders/${orderId}`);
+          if (!res.ok) throw new Error("Order not found");
+          currentOrder = await res.json();
+          renderOrderTracking(currentOrder);
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      function renderOrderTracking(order) {
+        document.getElementById('orderGrandTotal').textContent = `₹${order.grandTotal}`;
+        document.getElementById('estimatedPrepTime').textContent = `~${order.estimatedPrepTime || 18} Mins`;
+
+        // Render Items
+        document.getElementById('trackingItemsList').innerHTML = order.items.map(i => `
+          <div class="flex justify-between items-center bg-cream-50 p-2 rounded-xl border border-cream-200">
+            <span class="font-bold text-charcoal-900">${i.quantity}x ${i.name}</span>
+            <span class="font-mono text-stone-600">₹${i.price * i.quantity}</span>
+          </div>
+        `).join('');
+
+        if (order.customerNotes) {
+          document.getElementById('trackingNotesContainer').classList.remove('hidden');
+          document.getElementById('trackingNotesText').textContent = order.customerNotes;
+        }
+
+        // Status Headlines & Icons
+        const statusMap = {
+          'placed': {
+            badge: 'Order Placed',
+            badgeClass: 'bg-amber-100 text-amber-800 border-amber-300',
+            headline: 'Order Placed with Counter',
+            subtitle: 'Reception counter has received your order. Counter staff will confirm shortly.',
+            icon: 'bell'
+          },
+          'confirmed': {
+            badge: 'Counter Confirmed',
+            badgeClass: 'bg-sky-100 text-sky-800 border-sky-300',
+            headline: 'Order Confirmed by Counter',
+            subtitle: 'The front desk verified your table order and is routing it to the kitchen.',
+            icon: 'check-circle'
+          },
+          'in_kitchen': {
+            badge: 'Sent to Kitchen',
+            badgeClass: 'bg-orange-100 text-orange-800 border-orange-300',
+            headline: 'Sent to Cooking Station',
+            subtitle: 'The chef has received your order ticket on the kitchen display.',
+            icon: 'chef-hat'
+          },
+          'preparing': {
+            badge: 'Chef Preparing',
+            badgeClass: 'bg-orange-500 text-white border-orange-600',
+            headline: 'Chef Preparing Your Food 🔥',
+            subtitle: 'Your fresh paneer, hot chapatis, and dishes are actively cooking on flame & tandoor.',
+            icon: 'flame'
+          },
+          'food_ready': {
+            badge: 'Food Ready',
+            badgeClass: 'bg-emerald-500 text-white border-emerald-600',
+            headline: 'Food Ready for Pickup! ✅',
+            subtitle: 'Cooking complete! Hot dishes are on the kitchen pass. Waitstaff is picking it up.',
+            icon: 'utensils'
+          },
+          'out_for_delivery': {
+            badge: 'On the Way',
+            badgeClass: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+            headline: 'Out for Delivery to Your Table',
+            subtitle: `Service staff is bringing your steaming food right now to Table ${order.tableCode}.`,
+            icon: 'navigation'
+          },
+          'served': {
+            badge: 'Served',
+            badgeClass: 'bg-charcoal-900 text-gold-400 border-gold-500',
+            headline: 'Food Served at Table! 🍽️',
+            subtitle: 'Enjoy your delicious meal at Gajanan Hotel! Have a wonderful dining experience.',
+            icon: 'award'
+          },
+          'cancelled': {
+            badge: 'Cancelled',
+            badgeClass: 'bg-red-100 text-red-800 border-red-300',
+            headline: 'Order Cancelled',
+            subtitle: 'This order was cancelled. No food will be prepared or billed.',
+            icon: 'x-circle'
+          },
+          'rejected': {
+            badge: 'Rejected',
+            badgeClass: 'bg-red-100 text-red-800 border-red-300',
+            headline: 'Order Could Not Be Accepted',
+            subtitle: order.rejectionReason || 'The counter was unable to process this order.',
+            icon: 'alert-triangle'
+          }
+        };
+
+        const config = statusMap[order.status] || statusMap['placed'];
+        const badgeEl = document.getElementById('displayOrderStatusBadge');
+        badgeEl.textContent = config.badge;
+        badgeEl.className = `px-3 py-1 rounded-full font-bold uppercase text-[10px] border ${config.badgeClass}`;
+
+        document.getElementById('statusHeadline').textContent = config.headline;
+        document.getElementById('statusSubtitle').textContent = config.subtitle;
+
+        // 30-Second Cancel Section Management
+        const cancelSection = document.getElementById('cancelWindowSection');
+        if (order.status === 'placed') {
+          cancelSection.classList.remove('hidden');
+          startCancelTimer(order);
+        } else {
+          cancelSection.classList.add('hidden');
+          if (countdownTimer) clearInterval(countdownTimer);
+        }
+
+        // Stepper updates
+        updateStepper(order);
+        if (window.lucide) window.lucide.createIcons();
+      }
+
+      function updateStepper(order) {
+        const stepOrder = ['placed', 'confirmed', 'in_kitchen', 'preparing', 'food_ready', 'out_for_delivery', 'served'];
+        const currentIndex = stepOrder.indexOf(order.status);
+
+        stepOrder.forEach((stepName, idx) => {
+          const itemEl = document.querySelector(`.step-item[data-step="${stepName}"]`);
+          const timeEl = document.getElementById(`time-${stepName}`);
+          if (!itemEl) return;
+
+          const dot = itemEl.querySelector('.step-dot');
+
+          if (idx <= currentIndex) {
+            // Done or Current
+            itemEl.classList.remove('opacity-40');
+            dot.className = "step-dot absolute -left-6 top-0.5 w-5 h-5 rounded-full gold-gradient-bg text-charcoal-900 flex items-center justify-center text-[10px] font-bold shadow";
+            dot.textContent = "✓";
+
+            // Find timestamp in history
+            const hist = order.history.find(h => h.status === stepName);
+            if (hist && timeEl) {
+              timeEl.textContent = new Date(hist.timestamp).toLocaleTimeString();
+            }
+          } else {
+            // Pending
+            itemEl.classList.add('opacity-40');
+            dot.className = "step-dot absolute -left-6 top-0.5 w-5 h-5 rounded-full bg-cream-200 text-stone-600 flex items-center justify-center text-[10px] font-bold";
+            dot.textContent = idx + 1;
+            if (timeEl) timeEl.textContent = "Pending";
+          }
+        });
+      }
+
+      function startCancelTimer(order) {
+        if (countdownTimer) clearInterval(countdownTimer);
+        const timerText = document.getElementById('cancelTimerText');
+        const btnSeconds = document.getElementById('cancelBtnSeconds');
+
+        function tick() {
+          const rem = Math.max(0, Math.ceil((order.cancelExpiresAt - Date.now()) / 1000));
+          timerText.textContent = `${rem}s`;
+          btnSeconds.textContent = `${rem}s`;
+
+          if (rem <= 0) {
+            clearInterval(countdownTimer);
+            document.getElementById('cancelWindowSection').classList.add('hidden');
+          }
+        }
+        tick();
+        countdownTimer = setInterval(tick, 500);
+      }
+
+      // Cancel button action
+      document.getElementById('cancelOrderBtn').addEventListener('click', async () => {
+        if (!confirm("Are you sure you want to cancel this order?")) return;
+        try {
+          const res = await fetch(`/api/orders/${orderId}/cancel`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reason: "Customer cancelled within 30s" })
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            alert(data.error || "Cannot cancel order.");
+            return;
+          }
+          currentOrder = data.order;
+          renderOrderTracking(currentOrder);
+        } catch (e) {
+          console.error(e);
+        }
+      });
+
+      loadOrder();
+    });
+  </script>
+
+</body>
+</html>

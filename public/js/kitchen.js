@@ -1,4 +1,4 @@
-// Kitchen Display System (KDS) Logic - Cooking Staff
+// SMARTDINE - Chef Kitchen Display System (KDS) Operations
 document.addEventListener('DOMContentLoaded', () => {
   const refreshIcons = () => {
     if (window.lucide) window.lucide.createIcons();
@@ -11,151 +11,117 @@ document.addEventListener('DOMContentLoaded', () => {
   // DOM Elements
   const kitchenGrid = document.getElementById('kitchenGrid');
   const kitchenEmptyState = document.getElementById('kitchenEmptyState');
-  const activeCountBadge = document.getElementById('activeCountBadge');
+  const statKitchenActive = document.getElementById('statKitchenActive');
   const kitchenClock = document.getElementById('kitchenClock');
   const toggleAudioBtn = document.getElementById('toggleAudioBtn');
   const audioIcon = document.getElementById('audioIcon');
   const audioText = document.getElementById('audioText');
   const fullscreenBtn = document.getElementById('fullscreenBtn');
-  const filterButtons = document.querySelectorAll('.kds-filter-btn');
+  const kdsFilterBtns = document.querySelectorAll('.kds-filter-btn');
 
-  // Clock Update
+  // Clock
   setInterval(() => {
-    const d = new Date();
-    kitchenClock.textContent = d.toLocaleTimeString();
+    kitchenClock.textContent = new Date().toLocaleTimeString();
   }, 1000);
 
   // Audio Toggle
   toggleAudioBtn.addEventListener('click', () => {
     isMuted = !isMuted;
-    if (window.restaurantAudio) {
-      window.restaurantAudio.muted = isMuted;
-    }
+    if (window.restaurantAudio) window.restaurantAudio.muted = isMuted;
     audioText.textContent = isMuted ? "Sound OFF" : "Sound ON";
     audioIcon.className = isMuted ? "w-4 h-4 text-red-400" : "w-4 h-4 text-emerald-400";
-    if (!isMuted && window.restaurantAudio) {
-      window.restaurantAudio.playOrderBell();
-    }
+    if (!isMuted && window.restaurantAudio) window.restaurantAudio.playCookingAlert();
   });
 
   // Fullscreen
   fullscreenBtn.addEventListener('click', () => {
     if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().catch(err => console.log(err));
+      document.documentElement.requestFullscreen().catch(e => console.log(e));
     } else {
       document.exitFullscreen();
     }
   });
 
-  // Connect to Socket.io
+  // Socket.IO
   const socket = io();
-
   socket.on('connect', () => {
-    console.log('[Kitchen KDS] Connected to live kitchen server');
+    console.log('[KDS] Connected to live kitchen server');
     socket.emit('kitchen:join');
   });
 
-  // Socket Events
-  socket.on('order:created', (newOrder) => {
-    console.log('[KDS] New order received:', newOrder.id);
-    const existingIndex = orders.findIndex(o => o.id === newOrder.id);
-    if (existingIndex >= 0) {
-      orders[existingIndex] = newOrder;
-    } else {
-      orders.unshift(newOrder);
-    }
-
-    if (window.restaurantAudio) window.restaurantAudio.playOrderBell();
-    renderKitchen();
-  });
-
-  socket.on('order:cancelled', (cancelledOrder) => {
-    console.log('[KDS] Order cancelled:', cancelledOrder.id);
-    const order = orders.find(o => o.id === cancelledOrder.id);
-    if (order) {
-      order.status = 'cancelled';
-      order.cancelledAt = cancelledOrder.cancelledAt;
-    }
-    if (window.restaurantAudio) window.restaurantAudio.playCancelSound();
-    renderKitchen();
-  });
-
-  socket.on('order:locked', (lockedOrder) => {
-    console.log('[KDS] Order locked (30s elapsed):', lockedOrder.id);
-    const order = orders.find(o => o.id === lockedOrder.id);
-    if (order) {
-      order.status = 'confirmed';
-      order.expiresCancelAt = lockedOrder.expiresCancelAt;
-    }
+  socket.on('kitchen:new_ticket', (order) => {
+    orders.unshift(order);
     if (window.restaurantAudio) window.restaurantAudio.playCookingAlert();
-    renderKitchen();
+    renderKDS();
   });
 
-  socket.on('order:updated', (updatedOrder) => {
-    const index = orders.findIndex(o => o.id === updatedOrder.id);
-    if (index >= 0) {
-      orders[index] = updatedOrder;
-      renderKitchen();
+  socket.on('order:status_update', (order) => {
+    const idx = orders.findIndex(o => o.id === order.id);
+    if (idx >= 0) {
+      orders[idx] = order;
+    } else if (['in_kitchen', 'preparing', 'food_ready'].includes(order.status)) {
+      orders.unshift(order);
+    }
+    renderKDS();
+  });
+
+  socket.on('order:item_updated', ({ orderId, itemId, isPrepared }) => {
+    const order = orders.find(o => o.id === orderId);
+    if (order) {
+      const item = order.items.find(i => i.id === itemId);
+      if (item) item.isPrepared = isPrepared;
+      renderKDS();
     }
   });
 
-  socket.on('order:refresh', () => {
-    fetchOrders();
-  });
-
-  // Fetch initial orders
-  async function fetchOrders() {
-    try {
-      const res = await fetch('/api/orders');
-      orders = await res.json();
-      renderKitchen();
-    } catch (err) {
-      console.error('Failed to fetch orders:', err);
-    }
-  }
-
-  // Filter clicks
-  filterButtons.forEach(btn => {
+  // Filter Buttons
+  kdsFilterBtns.forEach(btn => {
     btn.addEventListener('click', () => {
-      filterButtons.forEach(b => {
-        b.classList.remove('active', 'bg-brand-600', 'text-white');
-        b.classList.add('bg-slate-800', 'text-slate-300');
+      kdsFilterBtns.forEach(b => {
+        b.classList.remove('active', 'bg-gold-500', 'text-charcoal-900');
+        b.classList.add('bg-charcoal-800', 'text-stone-300');
       });
-      btn.classList.add('active', 'bg-brand-600', 'text-white');
-      btn.classList.remove('bg-slate-800', 'text-slate-300');
+      btn.classList.add('active', 'bg-gold-500', 'text-charcoal-900');
+      btn.classList.remove('bg-charcoal-800', 'text-stone-300');
 
-      currentFilter = btn.dataset.filter;
-      renderKitchen();
+      currentFilter = btn.dataset.kdsFilter;
+      renderKDS();
     });
   });
 
-  // Render Kitchen Tickets
-  function renderKitchen() {
-    // Filter active orders (excluding served and cancelled from active tally)
-    const activeOrders = orders.filter(o => !['served', 'cancelled'].includes(o.status));
-    activeCountBadge.textContent = activeOrders.length;
+  async function fetchOrders() {
+    try {
+      const res = await fetch('/api/orders');
+      const allOrders = await res.json();
+      // Keep only kitchen-relevant tickets
+      orders = allOrders.filter(o => ['in_kitchen', 'preparing', 'food_ready'].includes(o.status));
+      renderKDS();
+    } catch (e) {
+      console.error(e);
+    }
+  }
 
-    // Counts for filter pills
-    document.getElementById('countAll').textContent = activeOrders.length;
-    document.getElementById('countPending').textContent = orders.filter(o => o.status === 'pending_confirmation').length;
-    document.getElementById('countConfirmed').textContent = orders.filter(o => o.status === 'confirmed').length;
-    document.getElementById('countCooking').textContent = orders.filter(o => o.status === 'cooking').length;
-    document.getElementById('countReady').textContent = orders.filter(o => o.status === 'ready').length;
+  function renderKDS() {
+    const newCount = orders.filter(o => o.status === 'in_kitchen').length;
+    const prepCount = orders.filter(o => o.status === 'preparing').length;
+    const readyCount = orders.filter(o => o.status === 'food_ready').length;
 
-    let displayOrders = orders;
-    if (currentFilter === 'all') {
-      displayOrders = orders.filter(o => o.status !== 'served');
-    } else if (currentFilter === 'pending') {
-      displayOrders = orders.filter(o => o.status === 'pending_confirmation');
-    } else if (currentFilter === 'confirmed') {
-      displayOrders = orders.filter(o => o.status === 'confirmed');
-    } else if (currentFilter === 'cooking') {
-      displayOrders = orders.filter(o => o.status === 'cooking');
+    statKitchenActive.textContent = newCount + prepCount;
+    document.getElementById('countKdsAll').textContent = orders.length;
+    document.getElementById('countKdsNew').textContent = newCount;
+    document.getElementById('countKdsPrep').textContent = prepCount;
+    document.getElementById('countKdsReady').textContent = readyCount;
+
+    let list = orders;
+    if (currentFilter === 'new') {
+      list = orders.filter(o => o.status === 'in_kitchen');
+    } else if (currentFilter === 'preparing') {
+      list = orders.filter(o => o.status === 'preparing');
     } else if (currentFilter === 'ready') {
-      displayOrders = orders.filter(o => o.status === 'ready');
+      list = orders.filter(o => o.status === 'food_ready');
     }
 
-    if (displayOrders.length === 0) {
+    if (list.length === 0) {
       kitchenGrid.innerHTML = '';
       kitchenEmptyState.classList.remove('hidden');
       return;
@@ -163,146 +129,94 @@ document.addEventListener('DOMContentLoaded', () => {
 
     kitchenEmptyState.classList.add('hidden');
 
-    kitchenGrid.innerHTML = displayOrders.map(order => {
-      const isPending = order.status === 'pending_confirmation';
-      const isCancelled = order.status === 'cancelled';
-      const isCooking = order.status === 'cooking';
-      const isReady = order.status === 'ready';
-      const isConfirmed = order.status === 'confirmed';
+    kitchenGrid.innerHTML = list.map(order => {
+      const isNew = order.status === 'in_kitchen';
+      const isPreparing = order.status === 'preparing';
+      const isReady = order.status === 'food_ready';
 
       const now = Date.now();
-      const remainingSec = Math.max(0, Math.ceil((order.expiresCancelAt - now) / 1000));
-      const elapsedMins = Math.floor((now - order.createdAt) / 60000);
+      const elapsedMins = Math.floor((now - (order.kitchenSentAt || order.createdAt)) / 60000);
 
-      // Card Header Color & Status Badge
-      let statusBadgeHtml = '';
-      let borderClass = 'border-slate-700';
+      let borderClass = 'border-charcoal-700';
+      let statusBadge = '';
 
-      if (isPending) {
-        borderClass = 'border-amber-500/80 shadow-lg shadow-amber-500/10';
-        statusBadgeHtml = `
-          <div class="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/40 font-mono text-xs font-bold animate-pulse">
-            <i data-lucide="clock" class="w-3.5 h-3.5 text-amber-400"></i>
-            <span>30s Cancel Window: <span class="text-white text-sm font-black" data-timer-order="${order.id}">${remainingSec}s</span></span>
-          </div>
-        `;
-      } else if (isCancelled) {
-        borderClass = 'border-red-600/70 bg-red-950/20';
-        statusBadgeHtml = `
-          <div class="inline-flex items-center px-2 py-0.5 rounded bg-red-500/20 text-red-400 border border-red-500/40 text-xs font-bold">
-            CANCELLED BY GUEST (30s)
-          </div>
-        `;
-      } else if (isConfirmed) {
-        borderClass = 'border-sky-500/80 shadow-lg shadow-sky-500/10';
-        statusBadgeHtml = `
-          <div class="inline-flex items-center px-2.5 py-0.5 rounded bg-sky-500/20 text-sky-400 border border-sky-500/40 text-xs font-bold">
-            CONFIRMED / QUEUED
-          </div>
-        `;
-      } else if (isCooking) {
-        borderClass = 'border-orange-500/90 shadow-lg shadow-orange-500/20';
-        statusBadgeHtml = `
-          <div class="inline-flex items-center px-2.5 py-0.5 rounded bg-orange-500/20 text-orange-400 border border-orange-500/40 text-xs font-bold">
-            🔥 COOKING IN PROGRESS
-          </div>
-        `;
+      if (isNew) {
+        borderClass = 'border-amber-500 ring-2 ring-amber-500/20';
+        statusBadge = `<span class="px-2.5 py-0.5 rounded text-[10px] font-black uppercase bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse">NEW TICKET</span>`;
+      } else if (isPreparing) {
+        borderClass = 'border-orange-500 ring-2 ring-orange-500/20';
+        statusBadge = `<span class="px-2.5 py-0.5 rounded text-[10px] font-black uppercase bg-orange-500/20 text-orange-300 border border-orange-500/40">PREPARING 🔥</span>`;
       } else if (isReady) {
-        borderClass = 'border-emerald-500/90 shadow-lg shadow-emerald-500/20';
-        statusBadgeHtml = `
-          <div class="inline-flex items-center px-2.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-bold">
-            ✅ READY FOR TABLE
-          </div>
-        `;
+        borderClass = 'border-emerald-500 ring-2 ring-emerald-500/20';
+        statusBadge = `<span class="px-2.5 py-0.5 rounded text-[10px] font-black uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">READY ON PASS ✅</span>`;
       }
 
-      // Action Button
-      let actionButtonHtml = '';
-      if (isPending) {
-        actionButtonHtml = `
-          <div class="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-center">
-            <span class="text-xs text-amber-300 font-semibold">⏳ Guest may cancel within 30s. Cooking locks automatically.</span>
-          </div>
-        `;
-      } else if (isConfirmed) {
-        actionButtonHtml = `
-          <button onclick="window.updateStatus('${order.id}', 'cooking')" class="w-full py-3 bg-brand-600 hover:bg-brand-500 active:scale-95 text-white font-bold text-sm rounded-xl shadow-lg shadow-brand-600/30 flex items-center justify-center space-x-2 transition">
-            <i data-lucide="flame" class="w-4 h-4"></i>
-            <span>Start Cooking Now</span>
-          </button>
-        `;
-      } else if (isCooking) {
-        actionButtonHtml = `
-          <button onclick="window.updateStatus('${order.id}', 'ready')" class="w-full py-3 bg-sky-600 hover:bg-sky-500 active:scale-95 text-white font-bold text-sm rounded-xl shadow-lg shadow-sky-600/30 flex items-center justify-center space-x-2 transition">
-            <i data-lucide="check-circle" class="w-4 h-4"></i>
-            <span>Mark Food Ready</span>
-          </button>
-        `;
-      } else if (isReady) {
-        actionButtonHtml = `
-          <button onclick="window.updateStatus('${order.id}', 'served')" class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-sm rounded-xl shadow-lg shadow-emerald-600/30 flex items-center justify-center space-x-2 transition">
-            <i data-lucide="utensils" class="w-4 h-4"></i>
-            <span>Delivered & Served</span>
-          </button>
-        `;
-      } else if (isCancelled) {
-        actionButtonHtml = `
-          <div class="p-2.5 rounded-xl bg-red-900/30 border border-red-800 text-center text-xs text-red-300">
-            Order voided within grace window. No preparation required.
-          </div>
-        `;
-      }
+      // Check if all items prepared
+      const allItemsPrepared = order.items.every(i => i.isPrepared);
 
       return `
-        <div class="kds-card rounded-2xl p-5 border ${borderClass} flex flex-col justify-between transition-all duration-200">
+        <div class="bg-charcoal-900 rounded-2xl p-5 border ${borderClass} flex flex-col justify-between shadow-xl transition">
           
-          <!-- Card Header -->
+          <!-- Ticket Header -->
           <div>
-            <div class="flex items-start justify-between pb-3 border-b border-slate-700/80">
+            <div class="flex items-start justify-between pb-3 border-b border-charcoal-800">
               <div>
                 <div class="flex items-center space-x-2">
-                  <span class="text-2xl font-black text-amber-400 font-mono tracking-tight">TABLE ${order.tableNumber}</span>
-                  <span class="text-xs text-slate-400 font-mono font-medium">#${order.id}</span>
+                  <span class="text-3xl font-black text-gold-400 font-serif-luxury tracking-tight">${order.tableCode}</span>
+                  <span class="text-xs text-stone-400 font-mono">#${order.id}</span>
                 </div>
-                <div class="text-[11px] text-slate-400 mt-0.5">
-                  Placed: ${new Date(order.createdAt).toLocaleTimeString()} (${elapsedMins}m ago)
+                <div class="text-[11px] text-stone-400 mt-0.5">
+                  In Kitchen: ${elapsedMins}m ago
                 </div>
               </div>
 
-              <!-- Status Badge -->
-              ${statusBadgeHtml}
+              ${statusBadge}
             </div>
 
-            <!-- Customer Special Notes for Chef -->
+            <!-- Notes -->
             ${order.customerNotes ? `
-              <div class="mt-3 p-2.5 rounded-xl bg-amber-400/10 border border-amber-400/30 text-amber-200 text-xs">
-                <span class="font-bold uppercase tracking-wider text-[10px] text-amber-400 block mb-0.5">⚠️ GUEST INSTRUCTIONS:</span>
+              <div class="mt-3 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs">
+                <span class="font-extrabold uppercase text-[10px] text-amber-400 block mb-0.5">⚠️ CHEF NOTE:</span>
                 "${order.customerNotes}"
               </div>
             ` : ''}
 
-            <!-- Items List -->
-            <div class="mt-4 space-y-2.5">
-              <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Items to Prepare:</div>
-              <div class="space-y-2">
-                ${order.items.map(item => `
-                  <div class="flex items-center justify-between bg-slate-900/70 p-2.5 rounded-xl border border-slate-800">
-                    <div class="flex items-center space-x-2.5">
-                      <span class="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-400 font-black text-sm flex items-center justify-center font-mono">
-                        ${item.quantity}x
-                      </span>
-                      <span class="text-sm font-bold text-slate-100">${item.name}</span>
-                    </div>
-                    <span class="text-xs text-slate-400 font-mono">₹${item.price * item.quantity}</span>
+            <!-- Individual Dishes Checklist -->
+            <div class="mt-4 space-y-2">
+              <div class="text-[10px] font-extrabold uppercase tracking-wider text-stone-400">Tap dish to mark prepared:</div>
+              ${order.items.map(item => `
+                <div onclick="window.toggleDishPrepared('${order.id}', '${item.id}', ${!item.isPrepared})" class="cursor-pointer p-2.5 rounded-xl border transition flex items-center justify-between ${item.isPrepared ? 'bg-emerald-950/30 border-emerald-600/60 line-through text-stone-400' : 'bg-charcoal-800/80 border-charcoal-700 text-cream-100 hover:border-gold-500'}">
+                  <div class="flex items-center space-x-2.5">
+                    <span class="w-6 h-6 rounded-lg ${item.isPrepared ? 'bg-emerald-600 text-white' : 'gold-gradient-bg text-charcoal-900'} font-black text-xs flex items-center justify-center">
+                      ${item.isPrepared ? '✓' : item.quantity + 'x'}
+                    </span>
+                    <span class="text-xs font-bold">${item.name}</span>
                   </div>
-                `).join('')}
-              </div>
+                  <span class="text-[10px] uppercase font-bold ${item.isPrepared ? 'text-emerald-400' : 'text-stone-500'}">
+                    ${item.isPrepared ? 'PREPARED' : 'PENDING'}
+                  </span>
+                </div>
+              `).join('')}
             </div>
           </div>
 
-          <!-- Bottom Action Buttons -->
-          <div class="mt-5 pt-3 border-t border-slate-800">
-            ${actionButtonHtml}
+          <!-- Bottom Big Touch Actions -->
+          <div class="mt-5 pt-3 border-t border-charcoal-800">
+            ${isNew ? `
+              <button onclick="window.setOrderStatus('${order.id}', 'preparing')" class="w-full py-3.5 gold-gradient-bg hover:brightness-110 active:scale-95 text-charcoal-900 font-black text-sm rounded-xl shadow-lg transition flex items-center justify-center space-x-2">
+                <i data-lucide="flame" class="w-5 h-5"></i>
+                <span>Accept & Start Preparing</span>
+              </button>
+            ` : (isPreparing ? `
+              <button onclick="window.setOrderStatus('${order.id}', 'food_ready')" class="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-black text-sm rounded-xl shadow-lg shadow-emerald-600/30 transition flex items-center justify-center space-x-2 ${allItemsPrepared ? 'animate-pulse ring-2 ring-emerald-400' : ''}">
+                <i data-lucide="check-circle" class="w-5 h-5"></i>
+                <span>Mark Complete Order as Ready</span>
+              </button>
+            ` : `
+              <div class="p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-800 text-center text-xs text-emerald-300 font-bold">
+                Food Ready on Pass • Counter Notified
+              </div>
+            `)}
           </div>
 
         </div>
@@ -312,45 +226,45 @@ document.addEventListener('DOMContentLoaded', () => {
     refreshIcons();
   }
 
-  // Update Status Handlers
-  window.updateStatus = async (orderId, newStatus) => {
+  // Action handlers
+  window.setOrderStatus = async (orderId, nextStatus) => {
     try {
       const res = await fetch(`/api/orders/${orderId}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus })
+        body: JSON.stringify({ status: nextStatus })
       });
       const data = await res.json();
       if (data.success) {
         const order = orders.find(o => o.id === orderId);
-        if (order) order.status = newStatus;
-        renderKitchen();
-        if (newStatus === 'cooking' && window.restaurantAudio) {
-          window.restaurantAudio.playCookingAlert();
-        }
+        if (order) order.status = nextStatus;
+        renderKDS();
       }
-    } catch (err) {
-      console.error(err);
+    } catch (e) {
+      console.error(e);
     }
   };
 
-  // Live Timer Tick for Active 30s Grace Orders
-  setInterval(() => {
-    const timerElements = document.querySelectorAll('[data-timer-order]');
-    timerElements.forEach(el => {
-      const orderId = el.getAttribute('data-timer-order');
-      const order = orders.find(o => o.id === orderId);
-      if (order && order.status === 'pending_confirmation') {
-        const rem = Math.max(0, Math.ceil((order.expiresCancelAt - Date.now()) / 1000));
-        el.textContent = `${rem}s`;
-        if (rem === 0) {
-          order.status = 'confirmed';
-          renderKitchen();
+  window.toggleDishPrepared = async (orderId, itemId, isPrepared) => {
+    try {
+      const res = await fetch(`/api/orders/${orderId}/items/${itemId}/prep`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isPrepared })
+      });
+      const data = await res.json();
+      if (data.success) {
+        const order = orders.find(o => o.id === orderId);
+        if (order) {
+          const item = order.items.find(i => i.id === itemId);
+          if (item) item.isPrepared = isPrepared;
+          renderKDS();
         }
       }
-    });
-  }, 500);
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
-  // Initial Fetch
   fetchOrders();
 });
