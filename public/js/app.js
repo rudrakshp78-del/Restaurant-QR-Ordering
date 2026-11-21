@@ -43,6 +43,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // DOM Elements
   const headerTableText = document.getElementById('headerTableText');
   const cartTableSubtitle = document.getElementById('cartTableSubtitle');
+  const heroTableIndicator = document.getElementById('heroTableIndicator');
+  const heroPickTableBtn = document.getElementById('heroPickTableBtn');
   const switchTableBtn = document.getElementById('switchTableBtn');
   const tablePickerModal = document.getElementById('tablePickerModal');
   const closeTablePickerBtn = document.getElementById('closeTablePickerBtn');
@@ -90,7 +92,8 @@ document.addEventListener('DOMContentLoaded', () => {
   function setTable(tableNum) {
     currentTable = tableNum;
     headerTableText.textContent = `Table ${currentTable}`;
-    cartTableSubtitle.textContent = `Ordering for Table ${currentTable}`;
+    if (heroTableIndicator) heroTableIndicator.textContent = `TABLE ${currentTable}`;
+    cartTableSubtitle.textContent = `Ordering for Table ${currentTable} • Gajanan Hotel`;
     modalTableBadge.textContent = `Table ${currentTable}`;
     
     // Update URL query without page refresh
@@ -104,6 +107,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Table Switcher Handlers
   switchTableBtn.addEventListener('click', () => tablePickerModal.classList.remove('hidden'));
+  if (heroPickTableBtn) {
+    heroPickTableBtn.addEventListener('click', () => tablePickerModal.classList.remove('hidden'));
+  }
   closeTablePickerBtn.addEventListener('click', () => tablePickerModal.classList.add('hidden'));
 
   document.querySelectorAll('.table-select-btn').forEach(btn => {

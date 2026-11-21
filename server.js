@@ -248,7 +248,7 @@ app.get('/qrcodes', (req, res) => {
 // Start Server
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`\n======================================================`);
-  console.log(`🍽️  ROYAL SPICE RESTAURANT QR ORDERING SYSTEM`);
+  console.log(`🍽️  GAJANAN HOTEL - DIRECT QR ORDERING & KITCHEN SYSTEM`);
   console.log(`======================================================`);
   console.log(`🚀 Local Server:      http://localhost:${PORT}`);
   console.log(`📱 Wi-Fi Network URL: http://${localIp}:${PORT} (For Phone/Google Lens)`);
